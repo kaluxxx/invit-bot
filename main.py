@@ -62,8 +62,8 @@ def generate_link(message):
 # Fonction de démarrage
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.reply_to(message, "Hello! I am a bot to help you get the invite link for the channel. Also, I can tell you how "
-                          "many people you have invited to the channel. Just type /link to get the invite link and "
+    bot.reply_to(message, "Hello! I am a bot to help you get the invite link for the channel.\n\n Also, I can tell you how "
+                          "many people you have invited to the channel.\n\n Just type /link to get the invite link and "
                           "/count to get the number of people you invited to the channel.")
 
 
