@@ -2,92 +2,81 @@ import telebot
 import os
 
 # Token de votre bot
-TOKEN = '6665713484:AAGpxZHYArpBAT7o9aLvjjcHyrlozNpsuRU'
-CHANNEL_ID = '-1002155850946'
+TOKEN = '7430083181:AAEyb-dauAs2B3vq-tFDXbFyVj9FGwVZ58A'
+CHANNEL_ID = "-1002155850946"
 DATA_FILE = 'invitation_links.txt'
 
 # Initialiser le bot
 bot = telebot.TeleBot(TOKEN)
 
+already_invited = set()
+def generate_link(message, username):
+    invitor = message.from_user.username
+    key = f"{invitor}:{username}"
+    if key in already_invited:
+        bot.reply_to(message, "Don't be greedy! You have already got the invite link from this user.")
+        return
 
-def save_link(user_id, invite_link):
-    with open(DATA_FILE, 'a') as f:
-        f.write(f'{user_id},{invite_link},0\n')
-
-
-def load_links():
-    links = {}
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, 'r') as f:
-            for line in f:
-                user_id, link, count = line.strip().split(',')
-                links[link] = {'user_id': user_id, 'count': int(count)}
-    return links
-
-
-def update_link_count(link):
-    links = load_links()
-    if link in links:
-        links[link]['count'] += 1
-        with open(DATA_FILE, 'w') as f:
-            for link, data in links.items():
-                f.write(f"{data['user_id']},{link},{data['count']}\n")
-
-
-def get_user_invites(user_id):
-    links = load_links()
-    count = sum(data['count'] for link, data in links.items() if data['user_id'] == str(user_id))
-    return count
-
-
-def generate_link(message):
-    try:
-        user_id = message.from_user.id
-        has_link = False
-        links = load_links()
-        for link, data in links.items():
-            if data['user_id'] == str(user_id):
-                has_link = True
-                bot.reply_to(message, f"Your invite link is {link}")
+    with open(DATA_FILE, 'r') as file:
+        lines = file.readlines()
+        for i, line in enumerate(lines):
+            if username in line:
+                username, count = line.strip().split()
+                count = int(count) + 1
+                lines[i] = f"{username} {count}\n"
                 break
-        if not has_link:
-            invite_link = bot.export_chat_invite_link(CHANNEL_ID)
-            save_link(user_id, invite_link)
-            bot.reply_to(message, f"The invite link for the channel is {invite_link}")
+        else:
+            lines.append(f"{username} 1\n")
 
-    except Exception as e:
-        bot.reply_to(message, f"An error occurred: {e}")
+    with open(DATA_FILE, 'w') as file:
+        file.writelines(lines)
 
+    # Envoyer le lien d'invitation
+    link = bot.export_chat_invite_link(CHANNEL_ID)
+    bot.reply_to(message, f"Here is the invite link for the channel: {link}")
 
-# Fonction de démarrage
+    # Ajouter le nom d'utilisateur à l'ensemble des utilisateurs qui ont déjà invité quelqu'un
+    already_invited.add(key)
+
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.reply_to(message, "Hello! I am a bot to help you get the invite link for the channel.\n\n Also, I can tell you how "
-                          "many people you have invited to the channel.\n\n Just type /link to get the invite link and "
-                          "/count to get the number of people you invited to the channel.")
+    bot.reply_to(message,
+                 "Hello! I am a bot to help you get the invite link for the channel.\n\n Also, I can tell you how "
+                 "many people you have invited to the channel.\n\n Just type /link to get the invite link and "
+                 "/count to get the number of people you invited to the channel.")
 
 
 # Gestionnaire de commande pour obtenir le lien
 @bot.message_handler(commands=['link'])
-def send_link(message):
-    generate_link(message)
+def ask_for_username(message):
+    msg = bot.send_message(message.chat.id, "Please enter the username of the person who invited you to the channel with @")
+    bot.register_next_step_handler(msg, process_username)
+
+
+def process_username(message):
+    invitor = message.text
+    username = message.from_user.username
+
+    if invitor == "@" + username:
+        bot.reply_to(message, "You cannot invite yourself to the channel.")
+    elif invitor.startswith('@'):
+        generate_link(message, invitor)
+    else:
+        bot.reply_to(message, "Please enter a valid username starting with @")
 
 
 # Gestionnaire de commande pour obtenir le nombre d'utilisations du lien
 @bot.message_handler(commands=['count'])
 def send_count(message):
-    user_id = message.from_user.id
-    count = get_user_invites(user_id)
-    bot.reply_to(message, f"You have invited {count} people to the channel with your link.")
-
-
-# Gestionnaire pour détecter quand quelqu'un rejoint le groupe
-@bot.message_handler(content_types=['new_chat_members'])
-def handle_new_member(message):
-    for new_member in message.new_chat_members:
-        invite_link = message.invite_link
-        if invite_link:
-            update_link_count(invite_link)
+    with open(DATA_FILE, 'r') as file:
+        lines = file.readlines()
+        for line in lines:
+            username, count = line.strip().split()
+            if username == "@" + message.from_user.username:
+                bot.reply_to(message, f"You have invited {count} people to the channel.")
+                break
+        else:
+            bot.reply_to(message, "You have not invited anyone to the channel yet.")
 
 
 # Fonction principale pour démarrer le bot
