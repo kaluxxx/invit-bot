@@ -72,6 +72,9 @@ def send_count(message):
         lines = file.readlines()
         for line in lines:
             username, count = line.strip().split()
+            if not message.from_user.username:
+                bot.reply_to(message, "Please set a username to use this command.")
+                break
             if username == "@" + message.from_user.username:
                 bot.reply_to(message, f"You have invited {count} people to the channel.")
                 break
