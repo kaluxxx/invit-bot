@@ -42,10 +42,19 @@ def get_user_invites(user_id):
 
 def generate_link(message):
     try:
-        invite_link = bot.export_chat_invite_link(CHANNEL_ID)
         user_id = message.from_user.id
-        save_link(user_id, invite_link)
-        bot.reply_to(message, f"The invite link for the channel is {invite_link}")
+        has_link = False
+        links = load_links()
+        for link, data in links.items():
+            if data['user_id'] == str(user_id):
+                has_link = True
+                bot.reply_to(message, f"Your invite link is {link}")
+                break
+        if not has_link:
+            invite_link = bot.export_chat_invite_link(CHANNEL_ID)
+            save_link(user_id, invite_link)
+            bot.reply_to(message, f"The invite link for the channel is {invite_link}")
+
     except Exception as e:
         bot.reply_to(message, f"An error occurred: {e}")
 
