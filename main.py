@@ -84,7 +84,7 @@ def send_count(message):
 
 # Fonction principale pour démarrer le bot
 def main() -> None:
-    bot.polling()
+    bot.infinity_polling(timeout=10, long_polling_timeout = 5)
 
 
 if __name__ == '__main__':
